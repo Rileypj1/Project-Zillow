@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import requests
 from requests.auth import HTTPBasicAuth
 import pandas as pd
+import re
+import json
 
 
 class ZillowScraper:
@@ -12,37 +14,74 @@ class ZillowScraper:
     def getUrl(self, neighborhood):
         URL = "https://www.zillow.com/{}-philadelphia-pa/rentals".format(neighborhood)
         neighborhood_page = requests.get(URL, headers= self.header)
-        soup = BeautifulSoup(neighborhood_page.content, "html.parser")
+        soup = BeautifulSoup(neighborhood_page.text, "lxml")
         return soup
+
+    def convertToJSON(self, soup):
+        listings = soup.find_all("script")
+        #some elements on the webpage are NoneType which will throw errors here. we need a try and except to skip those so the for loop functions as expected.
+        #remove html tags
+        li_strings = []
+        for li in listings:
+            li1 = li.get_text().strip()
+            li_strings.append(li1)
+        r = re.compile("hdpData")
+        newlist = list(filter(r.findall, li_strings))
+        newlist = [el.replace('-->','') for el in newlist]
+        newlist = [el.replace('<!--','') for el in newlist]
+
+        json_list_original = []
+        for el in range(len(newlist)):
+            json_dict = json.loads(newlist[el])
+            json_list_original.append(json_dict)
+        #with list of strings, find nested json objects that contain relevant data
+        json_list_cleaned = json_list_original[0]['cat1']['searchResults']['listResults']
+        return json_list_cleaned
 
     def extractData(self, soup, neighborhood):
 
-        neighborhood_apartments = soup.find_all("div", class_="list-card-info")
-        neighborhood_list = []
-        #some elements on the webpage are NoneType which will throw errors here. we need a try and except to skip those so the for loop functions as expected.
-        try:
-            for apartment in neighborhood_apartments:
-                apt_list = []
-                address = apartment.find("address", class_="list-card-addr").text.strip()
-                price = apartment.find("div", class_="list-card-price").text.strip()
-                apt_details = apartment.find("ul", class_="list-card-details").text.strip()
-                neighborhood_string = neighborhood
-                apt_list.extend([address,price,apt_details,neighborhood_string])
-                apt_list = [i for i in apt_list if i]
-                neighborhood_list.append(apt_list)
-                # do something with item
-        except Exception as e:
-            # handle the exception accordingly
-            pass
-        #remove empty strings
-        print("extract function list", type(neighborhood_list))
+        json_data = self.convertToJSON(soup)
+        # for key, val in json_data[2].items():
+        #     print(key, val)
 
+        # try:
+        #     li_dict = json_data[2]['hdpData']['homeInfo']
+        #     if li_dict:
+        #         print('okay bye')
+        #     else:
+        #         print("the json_data", json_data[2]['address'])
+        # except:
+        #     print('okay it went to except')
+
+        neighborhood_list = []
+        
+        for li in range(len(json_data)):
+            try:        
+                li_dict = json_data[li]['hdpData']['homeInfo']
+
+                if li_dict:
+                    address = li_dict['streetAddress'] + li_dict['zipcode']
+                    price = li_dict['price']
+                    beds = int(li_dict['bedrooms'])
+                    baths = int(li_dict['bathrooms'])
+                    neighborhood_string = neighborhood
+
+                    neighborhood_list.append([address, price, beds, baths, neighborhood_string])
+                else:
+                    address = json_data[li]['address']
+                    price = json_data[li]['units'][0]['price']
+                    beds = int(json_data[li]['units'][0]['beds'])
+                    neighborhood_string = neighborhood
+                    neighborhood_list.append([address, price, beds, neighborhood_string])                    
+            except Exception as e:
+            # handle the exception accordingly
+                pass
         return neighborhood_list
     
     def cleanUpNeighborhood(self, neighborhoods):
-        columns = ['Address', 'Price', 'Apt_Details', 'Neighborhood']
-        print(type(neighborhoods), "\n"*2)
+        columns = ['Address', 'Price', 'Beds', 'Baths', 'Neighborhood']
         cleaned_df = pd.DataFrame(neighborhoods, columns = columns)
+
         print(cleaned_df)
 
 
@@ -50,5 +89,16 @@ if __name__ == "__main__":
     zillow = ZillowScraper()
     fishtown_page = zillow.getUrl("fishtown")
     fishtown_list = zillow.extractData(fishtown_page,"Fishtown")
-    zillow.cleanUpNeighborhood(fishtown_list)
+
+    fairmount_page = zillow.getUrl("fairmount")
+    fairmount_list = zillow.extractData(fairmount_page,"Fairmount")
+
+    passyunk_page = zillow.getUrl("passyunk_square")
+    passyunk_list = zillow.extractData(fairmount_page,"Passyunk Square")
+
+    rittenhouse_page = zillow.getUrl("rittenhouse")
+    rittenhouse_list = zillow.extractData(fairmount_page,"Rittenhouse")
+
+    zillow.cleanUpNeighborhood([*fishtown_list,*fairmount_list,*passyunk_list,*rittenhouse_list])
+    
 
