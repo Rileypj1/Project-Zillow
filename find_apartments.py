@@ -41,20 +41,9 @@ class ZillowScraper:
     def extractData(self, soup, neighborhood):
 
         json_data = self.convertToJSON(soup)
-        # for key, val in json_data[2].items():
-        #     print(key, val)
 
-        # try:
-        #     li_dict = json_data[2]['hdpData']['homeInfo']
-        #     if li_dict:
-        #         print('okay bye')
-        #     else:
-        #         print("the json_data", json_data[2]['address'])
-        # except:
-        #     print('okay it went to except')
 
         neighborhood_list = []
-        
         for li in range(len(json_data)):
             try:        
                 li_dict = json_data[li]['hdpData']['homeInfo']
@@ -64,22 +53,26 @@ class ZillowScraper:
                     price = li_dict['price']
                     beds = int(li_dict['bedrooms'])
                     baths = int(li_dict['bathrooms'])
+                    lat = float(li_dict['latitude'])
+                    long = float(li_dict['longitude'])
                     neighborhood_string = neighborhood
 
-                    neighborhood_list.append([address, price, beds, baths, neighborhood_string])
-                else:
-                    address = json_data[li]['address']
-                    price = json_data[li]['units'][0]['price']
-                    beds = int(json_data[li]['units'][0]['beds'])
-                    neighborhood_string = neighborhood
-                    neighborhood_list.append([address, price, beds, neighborhood_string])                    
+                    neighborhood_list.append([address, price, beds, baths, neighborhood_string, lat, long])
+                # else:
+                #     print('this is the li',json_date[li])
+                #     address = json_data[li]['address']
+                #     price = json_data[li]['units'][0]['price']
+                #     beds = int(json_data[li]['units'][0]['beds'])
+                #     baths = "Info Not Provided"
+                #     neighborhood_string = neighborhood
+                #     neighborhood_list.append([address, price, beds, baths, neighborhood_string])                    
             except Exception as e:
             # handle the exception accordingly
                 pass
         return neighborhood_list
     
     def cleanUpNeighborhood(self, neighborhoods):
-        columns = ['Address', 'Price', 'Beds', 'Baths', 'Neighborhood']
+        columns = ['Address', 'Price', 'Beds', 'Baths', 'Neighborhood','Latitude','Longitude',]
         cleaned_df = pd.DataFrame(neighborhoods, columns = columns)
 
         print(cleaned_df)
