@@ -5,6 +5,7 @@ from requests.auth import HTTPBasicAuth
 import pandas as pd
 import re
 import json
+from datetime import date
 
 
 class ZillowScraper:
@@ -37,6 +38,8 @@ class ZillowScraper:
         #with list of strings, find nested json objects that contain relevant data
         json_list_cleaned = json_list_original[0]['cat1']['searchResults']['listResults']
         return json_list_cleaned
+    
+    # def writeToCSV()
 
     def extractData(self, soup, neighborhood):
 
@@ -56,8 +59,9 @@ class ZillowScraper:
                     lat = float(li_dict['latitude'])
                     long = float(li_dict['longitude'])
                     neighborhood_string = neighborhood
+                    today = date.today()
 
-                    neighborhood_list.append([address, price, beds, baths, neighborhood_string, lat, long])
+                    neighborhood_list.append([address, price, beds, baths, neighborhood_string, lat, long, today])
                 # else:
                 #     print('this is the li',json_date[li])
                 #     address = json_data[li]['address']
@@ -72,7 +76,7 @@ class ZillowScraper:
         return neighborhood_list
     
     def cleanUpNeighborhood(self, neighborhoods):
-        columns = ['Address', 'Price', 'Beds', 'Baths', 'Neighborhood','Latitude','Longitude',]
+        columns = ['Address', 'Price', 'Beds', 'Baths', 'Neighborhood','Latitude','Longitude','Date_Webscraped']
         cleaned_df = pd.DataFrame(neighborhoods, columns = columns)
 
         print(cleaned_df)
