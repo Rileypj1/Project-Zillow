@@ -39,8 +39,6 @@ class ZillowScraper:
         json_list_cleaned = json_list_original[0]['cat1']['searchResults']['listResults']
         return json_list_cleaned
     
-    # def writeToCSV()
-
     def extractData(self, soup, neighborhood):
 
         json_data = self.convertToJSON(soup)
@@ -62,14 +60,7 @@ class ZillowScraper:
                     today = date.today()
 
                     neighborhood_list.append([address, price, beds, baths, neighborhood_string, lat, long, today])
-                # else:
-                #     print('this is the li',json_date[li])
-                #     address = json_data[li]['address']
-                #     price = json_data[li]['units'][0]['price']
-                #     beds = int(json_data[li]['units'][0]['beds'])
-                #     baths = "Info Not Provided"
-                #     neighborhood_string = neighborhood
-                #     neighborhood_list.append([address, price, beds, baths, neighborhood_string])                    
+                 
             except Exception as e:
             # handle the exception accordingly
                 pass
@@ -78,8 +69,13 @@ class ZillowScraper:
     def cleanUpNeighborhood(self, neighborhoods):
         columns = ['Address', 'Price', 'Beds', 'Baths', 'Neighborhood','Latitude','Longitude','Date_Webscraped']
         cleaned_df = pd.DataFrame(neighborhoods, columns = columns)
+        return cleaned_df
+    
+    def writeToCSV(self, df):
+        today = df['Date_Webscraped'].iloc[-1]
+        zillow_path = './zillow_files/apartments_scraped_{}'.format(today)
+        df.to_csv(zillow_path)
 
-        print(cleaned_df)
 
 
 if __name__ == "__main__":
@@ -91,11 +87,14 @@ if __name__ == "__main__":
     fairmount_list = zillow.extractData(fairmount_page,"Fairmount")
 
     passyunk_page = zillow.getUrl("passyunk_square")
-    passyunk_list = zillow.extractData(fairmount_page,"Passyunk Square")
+    passyunk_list = zillow.extractData(passyunk_page,"Passyunk Square")
 
     rittenhouse_page = zillow.getUrl("rittenhouse")
-    rittenhouse_list = zillow.extractData(fairmount_page,"Rittenhouse")
+    rittenhouse_list = zillow.extractData(rittenhouse_page,"Rittenhouse")
 
-    zillow.cleanUpNeighborhood([*fishtown_list,*fairmount_list,*passyunk_list,*rittenhouse_list])
+    final_df = zillow.cleanUpNeighborhood([*fishtown_list,*fairmount_list,\
+                                            *passyunk_list,*rittenhouse_list])
+    
+    zillow.writeToCSV(final_df)
     
 
